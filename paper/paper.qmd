@@ -1,0 +1,332 @@
+---
+title: "STA302 Project"
+subtitle: "What factors and how influence Ames Iowa Housing Sale Price"
+author: 
+  - First author
+  - Another author
+thanks: "Code and data are available at: https://github.com/Yuki010305/Final-Paper."
+date: today
+date-format: long
+abstract: "First sentence. Second sentence. Third sentence. Fourth sentence."
+format: html
+number-sections: true
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(MASS)
+library(magrittr)
+library(gridExtra)
+library(ggplot2)
+library(car)
+library(stargazer)
+library(modelsummary)
+
+```
+
+# Introduction
+
+The housing issue is a pillar industry of a country, and the healthy development of the housing issue affects the country's economic development level. In order to help the stable development of the housing transaction market, this project plans to better evaluate the value of housing transactions for Ames. So, the main purpose of this project is to explore the factors that influence the sale price of homes in Ames, Iowa, and how they affect the home sales price. The characteristics of the homes we selected include central air condition, car capacity of garage, general shape of property, rate of overall quality, total above ground living area, number of fireplaces and sale year. The remainder of this paper is structured as follows. @sec-data....
+
+# Data {#sec-data}
+
+```{r}
+#| label: ames
+#| fig-cap: ames house
+#| echo: false
+#current_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+#setwd(current_dir)
+
+ames_raw <- read.csv("../data/AmesHousing.csv")
+
+```
+
+The Raw data collects 82 features of the house, and data quality is not high.
+
+```{r}
+#| label: ames select variable
+#| fig-cap: ames house save
+#| echo: false
+ames <- dplyr::select(ames_raw,'Central.Air', 'Lot.Shape', 'Garage.Cars', 'Overall.Qual', 'TotRms.AbvGrd', 'Gr.Liv.Area', 'Garage.Area', 'Fireplaces','Yr.Sold', 'SalePrice')
+ames <- na.omit(ames)
+
+write.csv(ames,"../data/analysis_data/ames_analysis.csv",row.names = FALSE)
+
+```
+
+
+
+```{r}
+#| label: summary
+#| fig-cap: summary numeric
+#| echo: false
+summary(ames[,-c(1,2)])
+```
+
+
+
+```{r}
+#| label: air
+#| fig-cap: central air table
+#| echo: false
+### Categorical table
+table(ames$`Central.Air`)
+prop.table(table(ames$`Central.Air`))
+```
+
+
+
+```{r}
+#| label: lot
+#| fig-cap: lot shape table
+#| echo: false
+table(ames$`Lot.Shape`)
+prop.table(table(ames$`Lot.Shape`))
+```
+
+```{r}
+#| label: histprice
+#| fig-cap: sale price hist
+#| echo: false
+par(mfrow=c(1,2))
+hist(ames$SalePrice, breaks=10, xlab="Sale Price",main="Sale price",col="red") 
+hist(log(ames$SalePrice), breaks=10, xlab="log-transform Sale Price",main="Sale price",col="red") 
+```
+
+As you can see from the figure, house sales prices are right-skewed data. When building the model, we need to log-transform the house sales prices to make them conform to the normal distribution.
+
+```{r}
+#| label: histbox
+#| fig-cap: hists
+#| echo: false
+
+par(mfrow=c(3,2))
+
+hist(ames$Garage.Area, breaks=10,main="", xlab="Garage Area")
+hist(ames$Gr.Liv.Area, breaks=10, main="",xlab="Above grade living area")
+
+boxplot(ames$Overall.Qual,xlab="Overall Qual")
+boxplot(ames$TotRms.AbvGrd, xlab="TotRms AbvGrd")
+
+boxplot(ames$Fireplaces, xlab="Fireplaces")
+```
+
+```{r,warning=FALSE}
+#| label: point
+#| fig-cap: points
+#| echo: false
+a=ggplot(data=ames, aes(x=Garage.Area, y=SalePrice)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE,size=1.5,color="red") + 
+  labs(x = 'Garage Area', y='Sale Price')+
+  theme_bw()
+
+
+b=ggplot(data=ames, aes(x=Gr.Liv.Area, y=SalePrice)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE,size=1.5) + 
+  labs(x = 'Above grade living area square feet', y='Sale Price')+
+  theme_bw()
+
+grid.arrange(a,b, nrow=1)
+```
+
+The above scatter plot shows that both Garage Area and Above grade living area have a certain positive impact on sale price, especially the positive correlation between Above grade living area and sale price is very strong.
+
+
+
+# Model
+
+## Model set-up
+
+After data processing, the data set is a clean data set with 2929 observations and 10 house characteristic variables. In order to evaluate the performance of the model, we randomly split the analysis data set into a test set and a training set in a ratio of 75%:25%.
+
+```{r}
+#| label: spilt
+#| fig-cap: spilt data
+#| echo: false
+#| 
+set.seed(123456)
+rows <- sample(1:round(0.75*nrow(ames)), replace=FALSE) 
+train<- ames[rows,]
+test=ames[-rows,]
+```
+
+The first model we build is the full model. We then improve the model by removing insignificant variables.
+
+```{r}
+#| label: full
+#| fig-cap: full model
+#| echo: false
+#| 
+### full model
+full = lm(log(SalePrice) ~ ., data = train)
+summary(full)
+```
+
+
+
+```{r}
+#| label: sub
+#| fig-cap: sub model
+#| echo: false
+#| 
+ml = lm(log(SalePrice) ~ .-TotRms.AbvGrd-Yr.Sold, data = train)
+summary(ml)
+```
+
+
+```{r}
+#| label: ftest
+#| fig-cap: F test
+#| echo: false
+
+# F test
+anova(ml,full)
+```
+
+Analyzing the model of full and significant variables through the Partial F test, we found that the p value is much greater than 0, which shows that we cannot reject the null hypothesis and there is not much difference in the performance of the two models. But in terms of the number of variables, we still choose the model with significant variables.
+
+
+
+```{r}
+#| label: plot1
+#| fig-cap: plot model
+#| echo: false
+par(mfrow=c(2,2))
+
+plot(ml)
+```
+
+The residual test found that both ends of the QQ graph deviated greatly from the straight line and were affected by special points such as outliers and leverage points. So, in order to further improve the performance of model fitting, we will delete special points from the training set.
+
+```{r}
+#| label: outlier
+#| fig-cap: remove outliers
+#| echo: false
+
+# determine whether there are leverage points
+n <- nrow(train)
+p <- length(coef(ml))-1
+# leverage cutoff
+h_cut <- 2*(p+1)/n 
+off = which(hatvalues(ml) > h_cut)
+new_train = train[-off,]
+```
+
+After deleting special points such as level points, a new model was refitted.
+
+
+```{r}
+#| label: model2
+#| fig-cap: create model 2
+#| echo: false
+#| 
+ml_new = lm(log(SalePrice) ~ .-TotRms.AbvGrd-Yr.Sold, data =new_train)
+summary(ml_new)
+```
+
+```{r}
+#| label: savemodel
+#| fig-cap: save model
+#| echo: false
+#| 
+saveRDS(ml_new, "../model/model.rds")
+```
+
+### Model justification
+
+```{r}
+#| label: plotmodel2
+#| fig-cap: plot model 2
+#| echo: false
+par(mfrow=c(2,2))
+plot(ml_new)
+```
+
+Clearly the model has improved.
+
+#### A1:Linearity of the Relationship
+
+```{r}
+#| label: plothat
+#| fig-cap: plot y hat
+#| echo: false
+#| 
+plot(new_train$SalePrice ~ exp(fitted(ml_new)), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(new_train$SalePrice ~ exp(fitted(ml_new))), lty=2)
+```
+
+The above scatter plot fits the relationship between the predicted value and the actual value. You can see that these points are almost on or close to the line, so we can say that a linear relationship is satisfied.
+
+#### A2.Covariance of Errors
+
+#### A3.Common Error variance  
+
+homoskedasticity
+
+#### A4. Normality of Error
+
+
+# Results
+
+```{r}
+#| echo: false
+#| label: read
+#| eval: true
+#| warning: false
+#| message: false
+
+library(rstanarm)
+
+model <-
+  readRDS(file = ("../model/model.rds"))
+
+summary(model)
+#stargazer(model, type="latex",
+#          dep.var.labels=c("Log Sale Price"), align = TRUE)
+```
+
+1. When other factors remain unchanged, having central air conditioning increases the sales price of a house by 16.22%.
+
+
+
+# Discussion
+
+## First discussion point {#sec-first-point}
+
+
+## Second discussion point
+
+## Third discussion point
+
+## Weaknesses and next steps
+
+Weaknesses and next steps should also be included.
+
+\newpage
+
+\appendix
+
+# Appendix {.unnumbered}
+
+# Additional data details
+
+# Model details {#sec-model-details}
+
+## Posterior predictive check
+
+
+
+## Diagnostics
+
+
+\newpage
+
+# References
