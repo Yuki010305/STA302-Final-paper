@@ -9,9 +9,6 @@
 
 #### Workspace setup ####
 library(tidyverse)
-# [...UPDATE THIS...]
-
-
 
 data <- read.csv("../data/analysis_data/zillowtrim_analysis.csv")
 

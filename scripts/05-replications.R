@@ -10,12 +10,8 @@
 
 #### Workspace setup ####
 library(tidyverse)
-# [...UPDATE THIS...]
 
 #### Load data ####
-# [...ADD CODE HERE...]
-
-#### Read data ####
 analysis_data <- read_csv("../data/analysis_data/zillowtrim_analysis.csv")
 
 #### Replicate Graphs ####

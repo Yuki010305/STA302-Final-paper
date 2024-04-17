@@ -14,10 +14,8 @@
 library(ZillowR)
 library(tidyverse)
 library(readabs)
-# [...UPDATE THIS...]
 
 #### Download data ####
-# [...ADD CODE HERE TO DOWNLOAD...]
 
 #GetZestimate(
 #  zpid = NULL,
@@ -30,7 +28,6 @@ the_raw_data <- read_abs("6401.0", tables = "9", check_local=FALSE) %>%
 
 
 #### Save data ####
-# [...UPDATE THIS...]
 # change the_raw_data to whatever name you assigned when you downloaded it.
 write_csv(the_raw_data, "../raw_data.csv") 
 

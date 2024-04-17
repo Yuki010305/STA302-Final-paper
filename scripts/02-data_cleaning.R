@@ -1,5 +1,5 @@
 #### Preamble ####
-# Purpose: Clean building assessment data by removing NA values ​​and analyze factors affecting housing prices
+# Purpose: Clean building assessment data by removing NA values and analyze factors affecting housing prices
 # Author: Yaning Jin
 # Date: 16 April 2024
 # Contact: jinyaning010305@gmail.com
