@@ -1,7 +1,7 @@
 ---
-title: "What factors and how influence Zillow Housing Sale Price"
+title: "Zillow House Price Predict Analysis"
 author: "Yaning Jin "
-thanks: "Code and data are available at: https://github.com/Yuki010305/What-factors-and-how-influence-Zillow-Housing-Sale-Price.git"
+thanks: "Code and data are available at: https://github.com/Yuki010305/Zillow-House-Price-Predict-Analysis.git"
 date: today
 date-format: long
 abstract: "This project is interested in the factors affecting housing prices on zillow. After exploratory analysis of the data, a multiple linear regression was constructed, and a log transformation was performed to build a model with better performance. The transformed housing factors can explain more than 80% of the changes in housing prices. However, the existence of residuals in the model does not fully meet the constraints of the normality assumption, so in the future, data processing, feature engineering and model improvement are needed to study the factors affecting Zillow’s housing prices.."
