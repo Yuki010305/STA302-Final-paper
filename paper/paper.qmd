@@ -1,8 +1,8 @@
 ---
-title: "What factors and how influence Zillow Housing Sale Price"
+title: "Zillow House Price Predict Analysis"
 author: 
   - "Yaning Jin"
-thanks: "Code and data are available at: https://github.com/Yuki010305/What-factors-and-how-influence-Zillow-Housing-Sale-Price.git."
+thanks: "Code and data are available at: https://github.com/Yuki010305/Zillow-House-Price-Predict-Analysis.git."
 date: today
 date-format: long
 abstract: "This project is interested in the factors affecting housing prices on zillow. After exploratory analysis of the data, a multiple linear regression was constructed, and a log transformation was performed to build a model with better performance. The transformed housing factors can explain more than 80% of the changes in housing prices. However, the existence of residuals in the model does not fully meet the constraints of the normality assumption, so in the future, data processing, feature engineering and model improvement are needed to study the factors affecting Zillow's housing prices.."
@@ -103,6 +103,31 @@ write.csv(zillowtrim,"../data/analysis_data/zillowtrim_analysis.csv",row.names =
 |landtaxvaluedollarcnt|The assessed value of the land area| 
 |price|price| 
 
+
+## Measurement
+
+In this study, we leveraged data from the Zillow dataset, accessed through the Zillow API. The Zillow dataset provides comprehensive information on residential properties, enabling analyzes focused on housing market dynamics, property valuation, and spatial characteristics.
+
+The Zillow dataset encompasses various attributes crucial for understanding residential properties' characteristics and market behavior. Specifically:
+
+bathroomcnt: Indicates the number of bathrooms present in each residential property, influencing its utility and convenience for occupants.
+bedroomcnt: Represents the count of bedrooms within each residential unit, influencing its suitability for different household compositions.
+calculatedfinishedsquarefeet: Quantifies the total finished living area of the home, reflecting its size and spatial configuration.
+roomcnt: Denotes the total number of rooms in the residential unit, encompassing living spaces, bedrooms, and other functional areas, providing insights into the property's layout.
+yearbuilt: Specifies the year in which the principal residence was constructed, offering insights into the age distribution of properties within the dataset.
+taxvaluedollarcnt: Indicates the total tax-assessed value of the parcel, serving as a key indicator of property valuation for taxation purposes.
+landtaxvaluedollarcnt: Reflects the assessed value of the land area associated with each residential parcel, contributing to the overall property valuation.
+price: Represents the price of the residential property, serving as a fundamental metric for market valuation and investment analysis.
+By analyzing these attributes, researchers can gain valuable insights into housing market trends, property valuation factors, and the impact of various features on real estate prices within the studied area.
+
+To ensure the dataset's suitability for analysis, we performed several preprocessing steps. Select high-quality variables with few missing values and remove missing values. Additionally, we implemented data cleaning procedures to exclude observations with missing values, ensuring the completeness and reliability of our dataset for subsequent analyses.
+
+For detailed descriptions of each variable, please refer to the table provided in Section @sec-variable.
+
+
+
+
+
 # Exploratory Data Analysis {#sec-exploration}
 
 
@@ -134,16 +159,15 @@ table(zillowtrim$bedroomcnt)
 prop.table(table(zillowtrim$bedroomcnt))
 ```
 
-```{r}
-#| label: histprice
-#| fig-cap: sale price hist
+```{r }
+#| label: fig-histprice
+#| fig-cap: sale price and log sale price hist
 #| echo: false
 par(mfrow=c(1,2))
 hist(zillowtrim$price, breaks=10, xlab="Sale Price",main="Sale price",col="red") 
 hist(log(zillowtrim$price), breaks=10, xlab="log-transform Sale Price",main="Sale price",col="red") 
 ```
-
-As you can see from the figure, house sales prices are right-skewed data. When building the model, we need to log-transform the house sales prices to make them conform to the normal distribution.
+@fig-histprice, house sales prices are right-skewed data. When building the model, we need to log-transform the house sales prices to make them conform to the normal distribution.
 
 ```{r}
 #| label: histbox
@@ -189,8 +213,8 @@ As you can see from the figure, house sales prices are right-skewed data. When b
 
 
 ```{r,warning=FALSE,message=FALSE}
-#| label: point1
-#| fig-cap: points1
+#| label: fig-pointstwo
+#| fig-cap: Bivariate visualization
 #| echo: false
 a=ggplot(data=zillowtrim, aes(x=calculatedfinishedsquarefeet, y=price)) + 
   geom_point() + 
@@ -208,9 +232,7 @@ b=ggplot(data=zillowtrim, aes(x=taxvaluedollarcnt, y=price)) +
 grid.arrange(a,b, nrow=1)
 ```
 
-The above scatter plot shows that tax value has a certain positive impact on sale price, the positive correlation between tax value and sale price is very strong.
-
-The above scatter plot shows that square feet has a certain positive impact on sale price, the positive correlation between square feet and sale price is very strong.
+@fig-pointstwo shows that tax value has a certain positive impact on sale price, the positive correlation between tax value and sale price is very strong. @fig-pointstwo also shows that square feet has a certain positive impact on sale price, the positive correlation between square feet and sale price is very strong.
 
 
 # Model
@@ -296,11 +318,14 @@ After deleting special points such as level points, a new model was refitted.
 #| echo: false
 #| 
 ml_new = lm(log(price) ~ bathroomcnt+bedroomcnt+log(calculatedfinishedsquarefeet)+roomcnt+yearbuilt+log(taxvaluedollarcnt)+log(landtaxvaluedollarcnt), data = new_train)
-summary(ml_new)
+#summary(ml_new)
 #latex_code <- stargazer(full, log_ml, ml_new,type = "latex", title = "Regression Results" ,align = TRUE)
 #cat(latex_code, file = "regression_results.tex")
 #xelatex("regression_results.tex")
 ```
+
+
+
 
 ```{r}
 #| label: savemodel
@@ -319,13 +344,12 @@ saveRDS(ml_new, "../models/model.rds")
 #plot(ml_new)
 ```
 
-Clearly the model has improved.
 
 #### A1:Linearity of the Relationship
 
 ```{r}
-#| label: plothat
-#| fig-cap: plot y hat
+#| label: fig-plothat
+#| fig-cap: Y versus Y-hat 
 #| echo: false
 #| 
 plot(new_train$price ~ exp(fitted(ml_new)), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
@@ -333,35 +357,36 @@ abline(a = 0, b = 1)
 lines(lowess(new_train$price ~ exp(fitted(ml_new))), lty=2)
 ```
 
-The above scatter plot fits the relationship between the predicted value and the actual value. You can see that these points are almost on or close to the line, so we can say that a linear relationship is satisfied.
+@fig-plothat fits the relationship between the predicted value and the actual value. You can see that these points are almost on or close to the line, so we can say that a linear relationship is satisfied.
 
 #### A2.Covariance of Errors
 
 ```{r}
-#| label: plotresidual
-#| fig-cap: plot resid
+#| label: fig-plotresidual
+#| fig-cap: Residual Plot
 #| echo: false
 #| 
 plot(ml_new, which=1)
 
 ```
 
-the errors are independent.
+The residual plot @fig-plotresidual does not show any pattern, we can conclude that the residual terms are independently distributed across different predicted value ranges, consistent with the independence assumption of linear regression analysis.
 
 #### A3.Common Error variance  
 
-the errors have constant variance.
+The residual plot @fig-plotresidual is not a uniform distribution. As the predicted value increases, the variance decreases, so the assumption of constant variance is not completely established.
 
 #### A4. Normality of Error
 
 ```{r}
-#| label: plotqq
-#| fig-cap: plot qq
+#| label: fig-plotqq
+#| fig-cap: Normal Q-Q plot
 #| echo: false
-#| 
 qqnorm(resid(ml_new))
 qqline(resid(ml_new))
 ```
+
+There are obvious deviations at both ends of the QQ graph @fig-plotqq, which may indicate that the data does not conform to the normal distribution in this area.
 
 
 # Results
@@ -369,10 +394,44 @@ qqline(resid(ml_new))
 Estimating the value of a home is a common difficulty. Therefore, a lot of work has already been completed. Lee [@lee2016software] make an effort to develop multivariate regression models based on house datasets and assess the models using maximum information coefficient statistics based on anticipated values and home prices.  When a moderate to big data sample size is employed, Nghiep et al. [@nguyen2001predicting] examined two methods: multiple regression analysis (MRA) and artificial neural networks (ANN). Based on the prediction performance, ANN performs better than MRA. An artificial neural network (ANN) model was created after Limsombunchai [@limsombunchao2004house
 ] that ANNs are more accurate in predicting property values than hedonic regression models.  
 
-The final model shows that the number of bathrooms, bedrooms, rooms, year taxes and fees of the building, square feet, etc. all have a significant impact on Zillow’s housing prices.For every additional bathroom, the house price increases by 1.017% per unit. For every additional bedroom, the house price actually decreases by 0.01%. In addition, the newer the building is, the housing prices actually decrease. For every 1% unit increase in taxes and fees, housing prices increase by 0.67% unit.These findings explain the relationship between house-related attributes and house prices. 
+
+The final model is:  
+
+$$
+\begin{aligned}
+log(price) &=2.7-0.007bathroomcnt -0.006 bedroomcnt -0.2 log(squarefeet) \\ 
+    &-0.015 roomcnt -0.00025 yearbuilt + 0.67log(taxvaluedollarcnt) -0.055 log(landtaxvaluedollarcnt)
+\end{aligned}
+$$
+
+Adjusted R-squared is 0.8082, indicating that the model can explain approximately 80.83% of the variance of the target variable (logarithm of house prices).
+
+
+The final model shows that the number of bathrooms, bedrooms, rooms, year taxes and fees of the building, square feet, etc. all have a significant impact on Zillow’s housing prices. For every additional bathroom, the house price increases by 1.017% per unit. For every additional bedroom, the house price actually decreases by 0.01%. In addition, the newer the building is, the housing prices actually decrease. For every 1% unit increase in taxes and fees, housing prices increase by 0.67% unit.These findings explain the relationship between house-related attributes and house prices. 
 
 
 # Discussion
+
+## Discussion
+
+**Model Interpretability and Generalization**
+While the developed model provides valuable insights into the factors influencing housing prices, its interpretability is hindered by the transformation of data and the exclusion of certain categorical variables due to memory and time constraints. To address this, future research could explore methods to maintain model interpretability while optimizing predictive performance. Techniques such as feature selection and dimensionality reduction may help streamline the model without sacrificing interpretability.
+
+**Addressing Residual Normality Assumption**
+The observed violations of the normality assumption in the model's residuals raise concerns regarding its robustness and generalizability. To mitigate this issue, researchers could explore alternative modeling approaches or employ robust regression techniques that are less sensitive to deviations from normality. Additionally, conducting thorough diagnostic checks and sensitivity analyses can help identify potential sources of bias and improve the model's reliability.
+
+**Enhancing Model Performance Through Cross-Validation**
+The suggestion to partition training datasets into smaller subsets and perform cross-validation before generating test files holds promise for improving model performance and generalization. By systematically evaluating the model's performance across different subsets of data, researchers can gain insights into its stability and identify areas for refinement. Implementing rigorous cross-validation protocols can also enhance the model's credibility and ensure its applicability across diverse datasets.
+
+**Future Directions in Feature Engineering**
+Future iterations of the model could benefit from more sophisticated feature engineering techniques aimed at capturing the nuanced relationships between housing attributes and prices. Exploring advanced feature transformation methods, such as polynomial features or interaction terms, may help uncover hidden patterns and improve the model's predictive accuracy. Additionally, incorporating domain knowledge and expert insights into the feature selection process can enrich the model's explanatory power and enhance its utility for real-world applications.
+
+**Handling Missing Data**
+Addressing missing data is critical for ensuring the reliability and validity of the model's predictions. Researchers should carefully consider imputation strategies and explore techniques for incorporating missing variables as predictors in the model. By systematically addressing missing data issues, researchers can enhance the model's robustness and improve its performance on new datasets.
+
+In summary, while the developed model provides valuable insights into the factors influencing housing prices, there are several avenues for future research to enhance its interpretability, robustness, and predictive accuracy. By addressing these challenges and leveraging advanced modeling techniques, researchers can develop more reliable and actionable models for estimating housing values.
+
+
 
 ## Weaknesses and next steps
 
