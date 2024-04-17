@@ -1,11 +1,11 @@
 #### Preamble ####
-# Purpose: Cleans the raw plane data recorded by two observers..... [...UPDATE THIS...]
-# Author: Rohan Alexander [...UPDATE THIS...]
-# Date: 6 April 2023 [...UPDATE THIS...]
-# Contact: rohan.alexander@utoronto.ca [...UPDATE THIS...]
+# Purpose: Clean building assessment data by removing NA values ​​and analyze factors affecting housing prices
+# Author: Yaning Jin
+# Date: 16 April 2024
+# Contact: jinyaning010305@gmail.com
 # License: MIT
-# Pre-requisites: [...UPDATE THIS...]
-# Any other information needed? [...UPDATE THIS...]
+# Pre-requisites: 'readr' for reading CSV data, 'dplyr' for data manipulation, and 'here' for managing file paths
+# The raw dataset must be located in the 'data/raw_data' directory before running this scrip
 
 #### Workspace setup ####
 library(tidyverse)
