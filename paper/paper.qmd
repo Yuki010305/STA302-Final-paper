@@ -2,7 +2,7 @@
 title: "What factors and how influence Zillow Housing Sale Price"
 author: 
   - "Yaning Jin"
-thanks: "Code and data are available at: https://github.com/Yuki010305/Final-Paper."
+thanks: "Code and data are available at: https://github.com/Yuki010305/What-factors-and-how-influence-Zillow-Housing-Sale-Price.git."
 date: today
 date-format: long
 abstract: "This project is interested in the factors affecting housing prices on zillow. After exploratory analysis of the data, a multiple linear regression was constructed, and a log transformation was performed to build a model with better performance. The transformed housing factors can explain more than 80% of the changes in housing prices. However, the existence of residuals in the model does not fully meet the constraints of the normality assumption, so in the future, data processing, feature engineering and model improvement are needed to study the factors affecting Zillow's housing prices.."
@@ -18,13 +18,13 @@ link-citations: true
 #| message: false
 
 library(tidyverse)
-library(MASS)
-library(magrittr)
 library(gridExtra)
 library(ggplot2)
-library(car)
 library(stargazer)
+library(xtable)
 library(modelsummary)
+library(kableExtra)
+library(tinytex)
 
 ```
 
@@ -34,7 +34,10 @@ library(modelsummary)
 
 # Introduction
 
-One of a nation's key industries is housing, and the health of this sector influences the degree of economic growth of the nation. A person's home is frequently the most expensive item in their life. Zillow is an online real estate database provider that assesses property values and offers details on the houses you're interested in [@loukissas2018all]. The Zestimate prediction system was developed by Zillow. It is based on a data collection of hundreds of millions of homes and provides a preliminary estimate of a property's worth by combining a particular algorithm with the features of each home and the state of the market[@rolli2020zillow]. To improve the accuracy of the Zestimate system and provide people with a more trustworthy way to estimate home prices, Zillow launched the Zillow Awards competition in 2017. Our goal in this project is not to participate in a competition to minimize the logarithmic error between the estimated house price and the actual selling price. The main purpose of our exploration in this project is to explore the factors that affect Zillow home sales prices and how they affect home sales prices. Characteristics of the homes we select include number of bathrooms, number of bedrooms, square footage, number of rooms, year, tax value, land tax value, etc.
+One of a nation's key industries is housing, and the health of this sector influences the degree of economic growth of the nation. A person's home is frequently the most expensive item in their life. Zillow is an online real estate database provider that assesses property values and offers details on the houses you're interested in [@loukissas2018all]. The Zestimate prediction system was developed by Zillow. It is based on a data collection of hundreds of millions of homes and provides a preliminary estimate of a property's worth by combining a particular algorithm with the features of each home and the state of the market[@rolli2020zillow]. To improve the accuracy of the Zestimate system and provide people with a more trustworthy way to estimate home prices, Zillow launched the Zillow Awards competition in 2017. Our goal in this project is not to participate in a competition to minimize the logarithmic error between the estimated house price and the actual selling price. The main purpose of our exploration in this project is to explore the factors that affect Zillow home sales prices and how they affect home sales prices. Characteristics of the homes we select include number of bathrooms, number of bedrooms, square footage, number of rooms, year, tax value, land tax value, etc. The estimated model is 
+
+$$\text{log(price)}=\beta_0+\beta_1\text{bathrooms}+\beta_2\text{log(squarefootage)}+...+\beta_6\text{taxValue}$$
+For some variables we will also do some log transformations.
 
 
 # Data {#sec-data}
@@ -48,7 +51,20 @@ zillow <- read.csv("../data/analysis_data/zillow_price.csv")
 
 ```
 
+## Raw Data
+
+In this research, we examine zillow data sourced using the zillbowR library [@rolli2020zillow]. The dataset encompasses 90,275 records (89,499 records after cleaning), focusing on specific variables: bathroom number, bedroom number, year built, square feet, room number, tax value, etc. The apartments were built in a wide range of years, from as early as 1885 to as recently as 2015.
+
+
 The Raw data collects 60 features of the house, and data quality is not high, there are many features with many null values, so 8 high-quality variables are selected from the variables for modeling and prediction.
+
+
+## Data Analysis tools
+
+R [@citeR], a potent open-source statistical programming language, was used to analyze the data. To improve the effectiveness of our data operations, we used a collection of R packages from the tidyverse [@citetidyverse], which is a collection of tools created for data science. The `dplyr` package [@rDplyr] offered a consistent collection of verbs that aid in filtering, summarizing, and organizing the dataset, while the `ggplot2` package [@rGgplot2] made it easier to create complex visualizations. Because of its quick and user-friendly data reading capabilities, the `readr` package [@rReadr] was used.  `Knitr` [@rKnitr] handled report production dynamically, allowing R code to be included into this document. `kableExtra`[@R-kableExtra] was also used to create visually appealing and editable tables, which improved the way our results were presented. 
+
+
+
 
 ```{r}
 #| label: Zillow select variable
@@ -74,6 +90,7 @@ write.csv(zillowtrim,"../data/analysis_data/zillowtrim_analysis.csv",row.names =
 
 ```
 
+## Variable Description {#sec-variable}
 
 |Variable|Description|
 |---|---|  
@@ -86,12 +103,16 @@ write.csv(zillowtrim,"../data/analysis_data/zillowtrim_analysis.csv",row.names =
 |landtaxvaluedollarcnt|The assessed value of the land area| 
 |price|price| 
 
+# Exploratory Data Analysis {#sec-exploration}
+
 
 ```{r}
 #| label: summary
 #| fig-cap: summary numeric
 #| echo: false
-summary(zillowtrim[,-c(1,2,4,5)])
+#summary(zillowtrim[,-c(1,2,4,5)])
+
+#kableExtra::kable(t(zillowtrim[,-c(1,2,4,5)]), format="latex")
 ```
 
 
@@ -100,7 +121,7 @@ summary(zillowtrim[,-c(1,2,4,5)])
 #| fig-cap: central air table
 #| echo: false
 ### Categorical table
-table(zillowtrim$bathroomcnt)
+table(zillowtrim$yearbuilt)
 ```
 
 
@@ -129,42 +150,42 @@ As you can see from the figure, house sales prices are right-skewed data. When b
 #| fig-cap: hists
 #| echo: false
 
-par(mfrow=c(1,2))
+#par(mfrow=c(1,2))
 
-hist(zillowtrim$bathroomcnt, breaks=10,main="", xlab="bathroom")
-hist(zillowtrim$bedroomcnt, breaks=10, main="",xlab="bedroom")
+#hist(zillowtrim$calculatedfinishedsquarefeet, breaks=10,main="", xlab="square feet")
+#boxplot(zillowtrim$taxvaluedollarcnt, xlab="tax value")
+#hist(zillowtrim$bedroomcnt, breaks=10, main="",xlab="bedroom")
 
-par(mfrow=c(1,2))
-boxplot(zillowtrim$calculatedfinishedsquarefeet,xlab="square feet")
-boxplot(zillowtrim$roomcnt, xlab="room")
+#par(mfrow=c(1,2))
+#boxplot(zillowtrim$calculatedfinishedsquarefeet,xlab="square feet")
+#boxplot(zillowtrim$roomcnt, xlab="room")
 
-par(mfrow=c(1,2))
-boxplot(zillowtrim$taxvaluedollarcnt, xlab="tax value")
-boxplot(zillowtrim$landtaxvaluedollarcnt, xlab="land tax value")
+#par(mfrow=c(1,2))
+#boxplot(zillowtrim$taxvaluedollarcnt, xlab="tax value")
+#boxplot(zillowtrim$landtaxvaluedollarcnt, xlab="land tax value")
 ```
+
+
 
 ```{r,warning=FALSE,message=FALSE}
 #| label: point
 #| fig-cap: points
 #| echo: false
-a=ggplot(data=zillowtrim, aes(x=bathroomcnt, y=price)) + 
-  geom_point() + 
-  geom_smooth(method = lm, se = FALSE,size=1.5,color="red") + 
-  labs(x = 'bathroom', y='Sale Price')+
-  theme_bw()
+#a=ggplot(data=zillowtrim, aes(x=bathroomcnt, y=price)) + 
+#  geom_point() + 
+#  geom_smooth(method = lm, se = FALSE,size=1.5,color="red") + 
+#  labs(x = 'bathroom', y='Sale Price')+
+#  theme_bw()
 
 
-b=ggplot(data=zillowtrim, aes(x=taxvaluedollarcnt, y=price)) + 
-  geom_point() + 
-  geom_smooth(method = lm, se = FALSE,size=1.5) + 
-  labs(x = 'tax value', y='Sale Price')+
-  theme_bw()
+#b=ggplot(data=zillowtrim, aes(x=taxvaluedollarcnt, y=price)) + 
+#  geom_point() + 
+#  geom_smooth(method = lm, se = FALSE,size=1.5) + 
+#  labs(x = 'tax value', y='Sale Price')+
+#  theme_bw()
 
-grid.arrange(a,b, nrow=1)
+#grid.arrange(a,b, nrow=1)
 ```
-
-The above scatter plot shows that tax value has a certain positive impact on sale price, the positive correlation between tax value and sale price is very strong.
-
 
 
 ```{r,warning=FALSE,message=FALSE}
@@ -178,14 +199,16 @@ a=ggplot(data=zillowtrim, aes(x=calculatedfinishedsquarefeet, y=price)) +
   theme_bw()
 
 
-b=ggplot(data=zillowtrim, aes(x=bedroomcnt, y=price)) + 
+b=ggplot(data=zillowtrim, aes(x=taxvaluedollarcnt, y=price)) + 
   geom_point() + 
   geom_smooth(method = lm, se = FALSE,size=1.5) + 
-  labs(x = 'bedroom', y='Sale Price')+
+  labs(x = 'tax value', y='Sale Price')+
   theme_bw()
 
 grid.arrange(a,b, nrow=1)
 ```
+
+The above scatter plot shows that tax value has a certain positive impact on sale price, the positive correlation between tax value and sale price is very strong.
 
 The above scatter plot shows that square feet has a certain positive impact on sale price, the positive correlation between square feet and sale price is very strong.
 
@@ -216,7 +239,7 @@ The first model we build is the full model. We then improve the model by removin
 #| 
 ### full model
 full = lm(log(price) ~ ., data = train)
-summary(full)
+#summary(full)
 ```
 
 
@@ -227,7 +250,7 @@ summary(full)
 #| echo: false
 #| 
 log_ml = lm(log(price) ~ bathroomcnt+bedroomcnt+log(calculatedfinishedsquarefeet)+roomcnt+yearbuilt+log(taxvaluedollarcnt)+log(landtaxvaluedollarcnt), data = train)
-summary(log_ml)
+#summary(log_ml)
 ```
 
 ```{r}
@@ -245,7 +268,6 @@ saveRDS(log_ml , "../models/best_model.rds")
 #| fig-cap: plot model
 #| echo: false
 #par(mfrow=c(2,2))
-
 #plot(log_ml)
 ```
 
@@ -275,6 +297,9 @@ After deleting special points such as level points, a new model was refitted.
 #| 
 ml_new = lm(log(price) ~ bathroomcnt+bedroomcnt+log(calculatedfinishedsquarefeet)+roomcnt+yearbuilt+log(taxvaluedollarcnt)+log(landtaxvaluedollarcnt), data = new_train)
 summary(ml_new)
+#latex_code <- stargazer(full, log_ml, ml_new,type = "latex", title = "Regression Results" ,align = TRUE)
+#cat(latex_code, file = "regression_results.tex")
+#xelatex("regression_results.tex")
 ```
 
 ```{r}
@@ -291,7 +316,7 @@ saveRDS(ml_new, "../models/model.rds")
 #| label: plotmodel2
 #| fig-cap: plot model 2
 #| echo: false
-plot(ml_new)
+#plot(ml_new)
 ```
 
 Clearly the model has improved.
@@ -311,6 +336,15 @@ lines(lowess(new_train$price ~ exp(fitted(ml_new))), lty=2)
 The above scatter plot fits the relationship between the predicted value and the actual value. You can see that these points are almost on or close to the line, so we can say that a linear relationship is satisfied.
 
 #### A2.Covariance of Errors
+
+```{r}
+#| label: plotresidual
+#| fig-cap: plot resid
+#| echo: false
+#| 
+plot(ml_new, which=1)
+
+```
 
 the errors are independent.
 
@@ -338,8 +372,6 @@ Estimating the value of a home is a common difficulty. Therefore, a lot of work 
 The final model shows that the number of bathrooms, bedrooms, rooms, year taxes and fees of the building, square feet, etc. all have a significant impact on Zillow’s housing prices.For every additional bathroom, the house price increases by 1.017% per unit. For every additional bedroom, the house price actually decreases by 0.01%. In addition, the newer the building is, the housing prices actually decrease. For every 1% unit increase in taxes and fees, housing prices increase by 0.67% unit.These findings explain the relationship between house-related attributes and house prices. 
 
 
-
-
 # Discussion
 
 ## Weaknesses and next steps
@@ -352,7 +384,6 @@ To start making these models better in the future, divide each training dataset 
 \newpage
 
 \appendix
-
 
 
 
