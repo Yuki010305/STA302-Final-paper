@@ -1,0 +1,364 @@
+---
+title: "What factors and how influence Zillow Housing Sale Price"
+author: 
+  - "Yaning Jin"
+thanks: "Code and data are available at: https://github.com/Yuki010305/Final-Paper."
+date: today
+date-format: long
+abstract: "This project is interested in the factors affecting housing prices on zillow. After exploratory analysis of the data, a multiple linear regression was constructed, and a log transformation was performed to build a model with better performance. The transformed housing factors can explain more than 80% of the changes in housing prices. However, the existence of residuals in the model does not fully meet the constraints of the normality assumption, so in the future, data processing, feature engineering and model improvement are needed to study the factors affecting Zillow's housing prices.."
+format: pdf
+number-sections: true
+bibliography: references.bib
+link-citations: true
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(MASS)
+library(magrittr)
+library(gridExtra)
+library(ggplot2)
+library(car)
+library(stargazer)
+library(modelsummary)
+
+```
+
+
+\tableofcontents
+
+
+# Introduction
+
+One of a nation's key industries is housing, and the health of this sector influences the degree of economic growth of the nation. A person's home is frequently the most expensive item in their life. Zillow is an online real estate database provider that assesses property values and offers details on the houses you're interested in [@loukissas2018all]. The Zestimate prediction system was developed by Zillow. It is based on a data collection of hundreds of millions of homes and provides a preliminary estimate of a property's worth by combining a particular algorithm with the features of each home and the state of the market[@rolli2020zillow]. To improve the accuracy of the Zestimate system and provide people with a more trustworthy way to estimate home prices, Zillow launched the Zillow Awards competition in 2017. Our goal in this project is not to participate in a competition to minimize the logarithmic error between the estimated house price and the actual selling price. The main purpose of our exploration in this project is to explore the factors that affect Zillow home sales prices and how they affect home sales prices. Characteristics of the homes we select include number of bathrooms, number of bedrooms, square footage, number of rooms, year, tax value, land tax value, etc.
+
+
+# Data {#sec-data}
+
+```{r}
+#| label: Zillow
+#| fig-cap: Zillow house
+#| echo: false
+
+zillow <- read.csv("../data/analysis_data/zillow_price.csv")
+
+```
+
+The Raw data collects 60 features of the house, and data quality is not high, there are many features with many null values, so 8 high-quality variables are selected from the variables for modeling and prediction.
+
+```{r}
+#| label: Zillow select variable
+#| fig-cap: Zillow house save
+#| echo: false
+
+numeric_cols <- c('bathroomcnt',
+                  'bedroomcnt',
+                  'calculatedfinishedsquarefeet',
+                  'roomcnt',
+                  'yearbuilt',
+                  'taxvaluedollarcnt',
+                  'landtaxvaluedollarcnt',
+                  'price')
+
+zillowtrim <- zillow[, numeric_cols]
+
+
+
+zillowtrim <- na.omit(zillowtrim)
+
+write.csv(zillowtrim,"../data/analysis_data/zillowtrim_analysis.csv",row.names = FALSE)
+
+```
+
+
+|Variable|Description|
+|---|---|  
+|bathroomcnt|Number of bathrooms in home|   
+|bedroomcnt|Number of bedrooms in home|  
+|calculatedfinishedsquarefeet|Total finished living area of the home|  
+|roomcnt|Total number of rooms|  
+|yearbuilt|The Year the principal residence was built|  
+|taxvaluedollarcnt|The total tax assessed value of the parcel|  
+|landtaxvaluedollarcnt|The assessed value of the land area| 
+|price|price| 
+
+
+```{r}
+#| label: summary
+#| fig-cap: summary numeric
+#| echo: false
+summary(zillowtrim[,-c(1,2,4,5)])
+```
+
+
+```{r,echo=FALSE,eval=FALSE}
+#| label: air
+#| fig-cap: central air table
+#| echo: false
+### Categorical table
+table(zillowtrim$bathroomcnt)
+```
+
+
+
+```{r,echo=FALSE,eval=FALSE}
+#| label: bedroomcnt
+#| fig-cap: bedroomcnt table
+#| echo: false
+table(zillowtrim$bedroomcnt)
+prop.table(table(zillowtrim$bedroomcnt))
+```
+
+```{r}
+#| label: histprice
+#| fig-cap: sale price hist
+#| echo: false
+par(mfrow=c(1,2))
+hist(zillowtrim$price, breaks=10, xlab="Sale Price",main="Sale price",col="red") 
+hist(log(zillowtrim$price), breaks=10, xlab="log-transform Sale Price",main="Sale price",col="red") 
+```
+
+As you can see from the figure, house sales prices are right-skewed data. When building the model, we need to log-transform the house sales prices to make them conform to the normal distribution.
+
+```{r}
+#| label: histbox
+#| fig-cap: hists
+#| echo: false
+
+par(mfrow=c(1,2))
+
+hist(zillowtrim$bathroomcnt, breaks=10,main="", xlab="bathroom")
+hist(zillowtrim$bedroomcnt, breaks=10, main="",xlab="bedroom")
+
+par(mfrow=c(1,2))
+boxplot(zillowtrim$calculatedfinishedsquarefeet,xlab="square feet")
+boxplot(zillowtrim$roomcnt, xlab="room")
+
+par(mfrow=c(1,2))
+boxplot(zillowtrim$taxvaluedollarcnt, xlab="tax value")
+boxplot(zillowtrim$landtaxvaluedollarcnt, xlab="land tax value")
+```
+
+```{r,warning=FALSE,message=FALSE}
+#| label: point
+#| fig-cap: points
+#| echo: false
+a=ggplot(data=zillowtrim, aes(x=bathroomcnt, y=price)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE,size=1.5,color="red") + 
+  labs(x = 'bathroom', y='Sale Price')+
+  theme_bw()
+
+
+b=ggplot(data=zillowtrim, aes(x=taxvaluedollarcnt, y=price)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE,size=1.5) + 
+  labs(x = 'tax value', y='Sale Price')+
+  theme_bw()
+
+grid.arrange(a,b, nrow=1)
+```
+
+The above scatter plot shows that tax value has a certain positive impact on sale price, the positive correlation between tax value and sale price is very strong.
+
+
+
+```{r,warning=FALSE,message=FALSE}
+#| label: point1
+#| fig-cap: points1
+#| echo: false
+a=ggplot(data=zillowtrim, aes(x=calculatedfinishedsquarefeet, y=price)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE,size=1.5,color="red") + 
+  labs(x = 'square feet', y='Sale Price')+
+  theme_bw()
+
+
+b=ggplot(data=zillowtrim, aes(x=bedroomcnt, y=price)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE,size=1.5) + 
+  labs(x = 'bedroom', y='Sale Price')+
+  theme_bw()
+
+grid.arrange(a,b, nrow=1)
+```
+
+The above scatter plot shows that square feet has a certain positive impact on sale price, the positive correlation between square feet and sale price is very strong.
+
+
+# Model
+
+## Model set-up
+
+After data processing, the data set is a clean data set with 2929 observations and 10 house characteristic variables. In order to evaluate the performance of the model, we randomly split the analysis data set into a test set and a training set in a ratio of 75%:25%.
+
+```{r}
+#| label: spilt
+#| fig-cap: spilt data
+#| echo: false
+#| 
+set.seed(123456)
+rows <- sample(1:round(0.75*nrow(zillowtrim)), replace=FALSE) 
+train<- zillowtrim[rows,]
+test=zillowtrim[-rows,]
+```
+
+The first model we build is the full model. We then improve the model by removing insignificant variables.
+
+```{r}
+#| label: full
+#| fig-cap: full model
+#| echo: false
+#| 
+### full model
+full = lm(log(price) ~ ., data = train)
+summary(full)
+```
+
+
+
+```{r}
+#| label: sub
+#| fig-cap: sub model
+#| echo: false
+#| 
+log_ml = lm(log(price) ~ bathroomcnt+bedroomcnt+log(calculatedfinishedsquarefeet)+roomcnt+yearbuilt+log(taxvaluedollarcnt)+log(landtaxvaluedollarcnt), data = train)
+summary(log_ml)
+```
+
+```{r}
+#| label: savebestmodel
+#| fig-cap: save besr model
+#| echo: false
+#| 
+saveRDS(log_ml , "../models/best_model.rds")
+```
+
+
+
+```{r}
+#| label: plot1
+#| fig-cap: plot model
+#| echo: false
+#par(mfrow=c(2,2))
+
+#plot(log_ml)
+```
+
+The residual test found that both ends of the QQ graph deviated greatly from the straight line and were affected by special points such as outliers and leverage points. So, in order to further improve the performance of model fitting, we will delete special points from the training set.
+
+```{r}
+#| label: outlier
+#| fig-cap: remove outliers
+#| echo: false
+
+# determine whether there are leverage points
+n <- nrow(train)
+p <- length(coef(log_ml))-1
+# leverage cutoff
+h_cut <- 2*(p+1)/n 
+off = which(hatvalues(log_ml) > h_cut)
+new_train = train[-off,]
+```
+
+After deleting special points such as level points, a new model was refitted.
+
+
+```{r}
+#| label: model2
+#| fig-cap: create model 2
+#| echo: false
+#| 
+ml_new = lm(log(price) ~ bathroomcnt+bedroomcnt+log(calculatedfinishedsquarefeet)+roomcnt+yearbuilt+log(taxvaluedollarcnt)+log(landtaxvaluedollarcnt), data = new_train)
+summary(ml_new)
+```
+
+```{r}
+#| label: savemodel
+#| fig-cap: save model
+#| echo: false
+#| 
+saveRDS(ml_new, "../models/model.rds")
+```
+
+### Model justification
+
+```{r}
+#| label: plotmodel2
+#| fig-cap: plot model 2
+#| echo: false
+plot(ml_new)
+```
+
+Clearly the model has improved.
+
+#### A1:Linearity of the Relationship
+
+```{r}
+#| label: plothat
+#| fig-cap: plot y hat
+#| echo: false
+#| 
+plot(new_train$price ~ exp(fitted(ml_new)), main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1)
+lines(lowess(new_train$price ~ exp(fitted(ml_new))), lty=2)
+```
+
+The above scatter plot fits the relationship between the predicted value and the actual value. You can see that these points are almost on or close to the line, so we can say that a linear relationship is satisfied.
+
+#### A2.Covariance of Errors
+
+the errors are independent.
+
+#### A3.Common Error variance  
+
+the errors have constant variance.
+
+#### A4. Normality of Error
+
+```{r}
+#| label: plotqq
+#| fig-cap: plot qq
+#| echo: false
+#| 
+qqnorm(resid(ml_new))
+qqline(resid(ml_new))
+```
+
+
+# Results
+
+Estimating the value of a home is a common difficulty. Therefore, a lot of work has already been completed. Lee [@lee2016software] make an effort to develop multivariate regression models based on house datasets and assess the models using maximum information coefficient statistics based on anticipated values and home prices.  When a moderate to big data sample size is employed, Nghiep et al. [@nguyen2001predicting] examined two methods: multiple regression analysis (MRA) and artificial neural networks (ANN). Based on the prediction performance, ANN performs better than MRA. An artificial neural network (ANN) model was created after Limsombunchai [@limsombunchao2004house
+] that ANNs are more accurate in predicting property values than hedonic regression models.  
+
+The final model shows that the number of bathrooms, bedrooms, rooms, year taxes and fees of the building, square feet, etc. all have a significant impact on Zillow’s housing prices.For every additional bathroom, the house price increases by 1.017% per unit. For every additional bedroom, the house price actually decreases by 0.01%. In addition, the newer the building is, the housing prices actually decrease. For every 1% unit increase in taxes and fees, housing prices increase by 0.67% unit.These findings explain the relationship between house-related attributes and house prices. 
+
+
+
+
+# Discussion
+
+## Weaknesses and next steps
+
+However, the residuals of our model do not fully satisfy the normality assumption. Such violations may reduce the model's predictive accuracy on new data sets. Another limitation of this model is that transforming the data makes the model less interpretable.
+
+To start making these models better in the future, divide each training dataset into smaller training tests and perform some cross-validation before generating the test files. This might enhance performance, or at the very least increase the predictability of the model's output. Although most categorical variables cannot be included in the model because of memory and time restrictions when running the model, the model may be enhanced with improved feature engineering. These variables can be included in the model by being divided into smaller groups. Making some interactive words is an additional thought. It is crucial to classify missing variables as predictors once all missing values have been imputed, as was previously noted.
+
+
+\newpage
+
+\appendix
+
+
+
+
+\newpage
+
+# References
+
+
+
